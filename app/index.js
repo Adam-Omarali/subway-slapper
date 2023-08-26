@@ -7,6 +7,7 @@ export default function Page(){
         <View style={tw`flex-auto justify-center items-center h-screen`}>
             <Text>Hello World</Text>
             <Link href="/bye">Bye</Link>
+            <Link href="/accelerometer">Accelerometer</Link>
         </View>
     )
 }
