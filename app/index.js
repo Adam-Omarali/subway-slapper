@@ -8,6 +8,7 @@ export default function Page(){
             <Text>Hello World</Text>
             <Link href="/bye">Bye</Link>
             <Link href="/accelerometer">Accelerometer</Link>
+            <Link href="/sloppy">sloppy</Link>
         </View>
     )
 }
