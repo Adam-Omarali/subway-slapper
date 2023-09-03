@@ -20,16 +20,18 @@ const INITIAL_ACCELEROMETER = {
   }
 }
 
-export default function App() {
+export default function Accel() {
   const [distance, setDistance] = useState(INITIAL_DISTANCE);
   const [accelerometerData, setAccelerometerData] = useState(INITIAL_ACCELEROMETER);
   const [velocity, setVelocity] = useState(INITIAL_DISTANCE)
   const [distances, setDistances] = useState([])
+  const [stopped, setStopped] = useState(false)
 
-  const threshold = 0.005
+  const threshold = 0.003
 
   function getDistance(){
-    return Math.sqrt(distance.x * distance.x + distance.y * distance.y)
+    //only x for now
+    return Math.sqrt(distance.x * distance.x)
   }
 
   function reset(){
@@ -70,13 +72,20 @@ export default function App() {
       velocityX = Math.abs(velocityX) > threshold ? velocityX : 0
       velcotiyY = Math.abs(velcotiyY) > threshold ? velcotiyY : 0
 
+      if(Math.abs(velocityX) > 0){
+        setStopped(false)
+      }
+      else{
+        setStopped(true)
+      }
+
       let tempVelocity = {...velocity}
       tempVelocity.x += velocityX
       tempVelocity.y += velcotiyY
       
       let tempDistance = {...distance}
-      tempDistance.x += velocityX * timeIntervalInSeconds
-      tempDistance.y += velcotiyY * timeIntervalInSeconds
+      tempDistance.x += tempVelocity.x * timeIntervalInSeconds
+      tempDistance.y += tempVelocity.y * timeIntervalInSeconds
 
       setVelocity(tempVelocity)
       setDistance(tempDistance)
@@ -103,9 +112,10 @@ export default function App() {
       
       <Text style={styles.text}>distance: {getDistance()} meters</Text>
       <Button onPress={reset} title="Reset"></Button>
-      {distances.map(dist => 
-        <Text style={styles.text}>{dist}</Text>
+      {distances.map((dist, idx) => 
+        <Text style={styles.text} key={idx}>{dist}</Text>
       )}
+      <Text style={`color:red`}>{stopped ? "STOPPED" : "MOVING"}</Text>
     </View>
   );
 }
