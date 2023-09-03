@@ -1,90 +1,60 @@
-// import React, { useState, useEffect, useRef } from 'react';
-// import { StyleSheet, Text, View } from 'react-native';
-// import { Accelerometer } from 'expo-sensors';
-
-// export default function App() {
-//   const [overallDist, setOverallDist] = useState(0.0);
-//   const accelerometerDataRef = useRef({
-//     x: 0,
-//     y: 0,
-//     z: 0,
-//   });
-//   let velocity = 0.0; // Initialize velocity to 0
-//   let distance = 0.0;
-
-//   useEffect(() => {
-//     let subscription;
-
-//     const _subscribe = () => {
-//       subscription = Accelerometer.addListener((data) => {
-//         accelerometerDataRef.current = data;
-//       });
-//     };
-
-//     const _unsubscribe = () => {
-//       subscription && subscription.remove();
-//     };
-
-//     _subscribe();
-
-//     const calculateDistance = () => {
-//       const { x, y, z } = accelerometerDataRef.current;
-//       const timeIntervalInSeconds = 0.5; // Assuming accelerometer updates every 0.5 seconds
-    
-//       // Calculate acceleration magnitude taking into account signs
-//       const acceleration = Math.sqrt(x * x + y * y);
-    
-//       velocity += acceleration * timeIntervalInSeconds;
-//       distance += velocity * timeIntervalInSeconds;
-    
-//       setOverallDist(distance); 
-//     };
-    
-
-//     const interval = setInterval(calculateDistance, 500); // Update every 500 milliseconds
-
-//     return () => {
-//       _unsubscribe();
-//       clearInterval(interval);
-//     };
-//   }, []);
-
-//   return (
-//     <View style={styles.container}>
-//       <Text style={styles.text}>Accelerometer: (in gs where 1g = 9.81 m/s^2)</Text>
-//       <Text style={styles.text}>distance: {overallDist.toFixed(10)} meters</Text>
-//     </View>
-//   );
-// }
-
-// const styles = StyleSheet.create({
-//   container: {
-//     flex: 1,
-//     justifyContent: 'center',
-//     paddingHorizontal: 20,
-//   },
-//   text: {
-//     textAlign: 'center',
-//   },
-// });
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { Button, StyleSheet, Text, View } from 'react-native';
 import { Accelerometer } from 'expo-sensors';
 
-export default function App() {
-  const [{ x, y, z }, setData] = useState({
+const INITIAL_DISTANCE = {
+  x: 0,
+  y: 0
+}
+
+const INITIAL_ACCELEROMETER = {
+  prev: {
     x: 0,
     y: 0,
-    z: 0,
-  });
-  const [subscription, setSubscription] = useState(null);
+    z: 0
+  },
+  curr: {
+    x: 0,
+    y: 0,
+    z: 0
+  }
+}
 
-  const _slow = () => Accelerometer.setUpdateInterval(1000);
-  const _fast = () => Accelerometer.setUpdateInterval(16);
+export default function App() {
+  const [distance, setDistance] = useState(INITIAL_DISTANCE);
+  const [accelerometerData, setAccelerometerData] = useState(INITIAL_ACCELEROMETER);
+  const [velocity, setVelocity] = useState(INITIAL_DISTANCE)
+  const [distances, setDistances] = useState([])
 
-  const _subscribe = () => {
-    setSubscription(Accelerometer.addListener(setData));
-  };
+  const threshold = 0.005
+
+  function getDistance(){
+    return Math.sqrt(distance.x * distance.x + distance.y * distance.y)
+  }
+
+  function reset(){
+    setDistances([...distances, getDistance()])
+    setDistance(INITIAL_DISTANCE)
+    setAccelerometerData(INITIAL_ACCELEROMETER)
+    setVelocity(INITIAL_DISTANCE)
+  }
+
+
+
+  useEffect(() => {
+    Accelerometer.setUpdateInterval(1000);
+    let subscription;
+
+    const _subscribe = () => {
+      subscription = Accelerometer.addListener((data) => {
+        let temp = {...accelerometerData}
+        temp.prev = temp.curr
+        temp.curr = data
+        temp.curr.x *= 9.8
+        temp.curr.y *= 9.8
+        setAccelerometerData(temp);
+      });
+    };
 
   const _unsubscribe = () => {
     subscription && subscription.remove();
@@ -93,26 +63,51 @@ export default function App() {
 
   useEffect(() => {
     _subscribe();
-    return () => _unsubscribe();
-  }, []);
+
+    const calculateDistance = () => {
+      const timeIntervalInSeconds = 0.02; // Assuming accelerometer updates every 0.02 seconds
+      let velocityX = ((accelerometerData.prev.x + accelerometerData.curr.x) / 2) * timeIntervalInSeconds
+      let velcotiyY = ((accelerometerData.prev.y + accelerometerData.curr.y) / 2) * timeIntervalInSeconds
+
+      velocityX = Math.abs(velocityX) > threshold ? velocityX : 0
+      velcotiyY = Math.abs(velcotiyY) > threshold ? velcotiyY : 0
+
+      let tempVelocity = {...velocity}
+      tempVelocity.x += velocityX
+      tempVelocity.y += velcotiyY
+      
+      let tempDistance = {...distance}
+      tempDistance.x += velocityX * timeIntervalInSeconds
+      tempDistance.y += velcotiyY * timeIntervalInSeconds
+
+      setVelocity(tempVelocity)
+      setDistance(tempDistance)
+
+    };
+
+    const interval = setInterval(calculateDistance, 20); // Update every 20 milliseconds
+
+    return () => {
+      _unsubscribe();
+      clearInterval(interval);
+    };
+  }, [accelerometerData]);
 
   return (
     <View style={styles.container}>
       <Text style={styles.text}>Accelerometer: (in gs where 1g = 9.81 m/s^2)</Text>
-      <Text style={styles.text}>x: {x}</Text>
-      <Text style={styles.text}>y: {y}</Text>
-      <Text style={styles.text}>z: {z}</Text>
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity onPress={subscription ? _unsubscribe : _subscribe} style={styles.button}>
-          <Text>{subscription ? 'On' : 'Off'}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={_slow} style={[styles.button, styles.middleButton]}>
-          <Text>Slow</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={_fast} style={styles.button}>
-          <Text>Fast</Text>
-        </TouchableOpacity>
-      </View>
+      <Text style={styles.text}>ax: {accelerometerData.curr.x}</Text>
+      <Text style={styles.text}>ay: {accelerometerData.curr.y}</Text>
+      <Text style={styles.text}>vx: {velocity.x}</Text>
+      <Text style={styles.text}>vy: {velocity.y}</Text>
+      <Text style={styles.text}>dx: {distance.x}</Text>
+      <Text style={styles.text}>dy: {distance.y}</Text>
+      
+      <Text style={styles.text}>distance: {getDistance()} meters</Text>
+      <Button onPress={reset} title="Reset"></Button>
+      {distances.map(dist => 
+        <Text style={styles.text}>{dist}</Text>
+      )}
     </View>
   );
 }
