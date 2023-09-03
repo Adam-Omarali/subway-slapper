@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Audio } from 'expo-av';
 import { View, Button } from 'react-native'; // Import the Button component
+import { Link } from 'expo-router';
 
 function sloppy() {
   const [sound, setSound] = useState();
@@ -21,6 +22,7 @@ function sloppy() {
 
   return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <Link href="/">Home</Link>
       <Button title="Play Audio" onPress={playSound} />
       <Button title="Stop Audio" onPress={stopSound} />
     </View>

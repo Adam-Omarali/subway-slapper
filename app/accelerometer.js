@@ -1,23 +1,58 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Button, StyleSheet, Text, View } from 'react-native';
 import { Accelerometer } from 'expo-sensors';
 
-export default function App() {
-  const [overallDist, setOverallDist] = useState(0.0);
-  const [accelerometerData, setAccelerometerData] = useState({
+const INITIAL_DISTANCE = {
+  x: 0,
+  y: 0
+}
+
+const INITIAL_ACCELEROMETER = {
+  prev: {
     x: 0,
     y: 0,
-    z: 0,
-  });
-  let velocity = 0.0; // Initialize velocity to 0
-  let distance = 0.0;
+    z: 0
+  },
+  curr: {
+    x: 0,
+    y: 0,
+    z: 0
+  }
+}
+
+export default function App() {
+  const [distance, setDistance] = useState(INITIAL_DISTANCE);
+  const [accelerometerData, setAccelerometerData] = useState(INITIAL_ACCELEROMETER);
+  const [velocity, setVelocity] = useState(INITIAL_DISTANCE)
+  const [distances, setDistances] = useState([])
+
+  const threshold = 0.005
+
+  function getDistance(){
+    return Math.sqrt(distance.x * distance.x + distance.y * distance.y)
+  }
+
+  function reset(){
+    setDistances([...distances, getDistance()])
+    setDistance(INITIAL_DISTANCE)
+    setAccelerometerData(INITIAL_ACCELEROMETER)
+    setVelocity(INITIAL_DISTANCE)
+  }
+
+
+
   useEffect(() => {
     Accelerometer.setUpdateInterval(1000);
     let subscription;
 
     const _subscribe = () => {
       subscription = Accelerometer.addListener((data) => {
-        setAccelerometerData(data);
+        let temp = {...accelerometerData}
+        temp.prev = temp.curr
+        temp.curr = data
+        temp.curr.x *= 9.8
+        temp.curr.y *= 9.8
+        setAccelerometerData(temp);
       });
     };
 
@@ -28,13 +63,24 @@ export default function App() {
     _subscribe();
 
     const calculateDistance = () => {
-      const { x, y } = accelerometerData;
       const timeIntervalInSeconds = 0.02; // Assuming accelerometer updates every 0.02 seconds
-      const acceleration = Math.sqrt(x * x + y * y);
-      velocity = velocity + acceleration * timeIntervalInSeconds;
-      distance = velocity * timeIntervalInSeconds;
+      let velocityX = ((accelerometerData.prev.x + accelerometerData.curr.x) / 2) * timeIntervalInSeconds
+      let velcotiyY = ((accelerometerData.prev.y + accelerometerData.curr.y) / 2) * timeIntervalInSeconds
 
-      setOverallDist(distance); // Set overallDist to the updated distance directly
+      velocityX = Math.abs(velocityX) > threshold ? velocityX : 0
+      velcotiyY = Math.abs(velcotiyY) > threshold ? velcotiyY : 0
+
+      let tempVelocity = {...velocity}
+      tempVelocity.x += velocityX
+      tempVelocity.y += velcotiyY
+      
+      let tempDistance = {...distance}
+      tempDistance.x += velocityX * timeIntervalInSeconds
+      tempDistance.y += velcotiyY * timeIntervalInSeconds
+
+      setVelocity(tempVelocity)
+      setDistance(tempDistance)
+
     };
 
     const interval = setInterval(calculateDistance, 20); // Update every 20 milliseconds
@@ -48,9 +94,18 @@ export default function App() {
   return (
     <View style={styles.container}>
       <Text style={styles.text}>Accelerometer: (in gs where 1g = 9.81 m/s^2)</Text>
-      <Text style={styles.text}>x: {accelerometerData.x}</Text>
-      <Text style={styles.text}>y: {accelerometerData.y}</Text>
-      <Text style={styles.text}>distance: {overallDist.toFixed(10)} meters</Text>
+      <Text style={styles.text}>ax: {accelerometerData.curr.x}</Text>
+      <Text style={styles.text}>ay: {accelerometerData.curr.y}</Text>
+      <Text style={styles.text}>vx: {velocity.x}</Text>
+      <Text style={styles.text}>vy: {velocity.y}</Text>
+      <Text style={styles.text}>dx: {distance.x}</Text>
+      <Text style={styles.text}>dy: {distance.y}</Text>
+      
+      <Text style={styles.text}>distance: {getDistance()} meters</Text>
+      <Button onPress={reset} title="Reset"></Button>
+      {distances.map(dist => 
+        <Text style={styles.text}>{dist}</Text>
+      )}
     </View>
   );
 }
